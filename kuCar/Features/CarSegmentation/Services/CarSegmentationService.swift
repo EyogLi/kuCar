@@ -222,7 +222,7 @@ final class CarSegmentationService: SegmentationServiceProtocol, @unchecked Send
     private func encodeMaskAsPNG(_ mask: CIImage) throws -> Data {
         let context = CIContext(options: [
             .workingColorSpace: NSNull(),
-            .outputPremultiplication: true
+            .outputPremultiplied: true
         ])
         guard let cgImage = context.createCGImage(mask, from: mask.extent) else {
             throw SegmentationError.maskEncodingFailed
