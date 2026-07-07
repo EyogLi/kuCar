@@ -14,7 +14,7 @@ final class WheelOverlayService: WheelOverlayServiceProtocol, @unchecked Sendabl
 
     private lazy var ciContext = CIContext(options: [
         .workingColorSpace: NSNull(),
-        .outputPremultiplication: true
+        .outputPremultiplied: true
     ])
 
     // MARK: - Public API
