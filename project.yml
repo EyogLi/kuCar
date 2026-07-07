@@ -29,6 +29,8 @@ targets:
     resources:
       - path: kuCar/Resources
         type: group
+        excludes:
+          - "**/*.metal"
     settings:
       base:
         INFOPLIST_FILE: kuCar/Info.plist
