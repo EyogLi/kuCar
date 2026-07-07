@@ -98,16 +98,32 @@ workflows:
           APP=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar3D.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
           if [ -z "$APP" ]; then
             echo "FATAL: .app not found, cannot create IPA"
-            echo "Build log tail:"
             tail -50 build3d.log
             exit 1
           fi
           echo "App: $APP"
-          echo "App size: $(du -sh "$APP")"
-          echo "Checking www bundle:"
-          ls -la "$APP/www/" 2>/dev/null || echo "WARNING: www/ folder missing!"
-          ls -la "$APP/www/js/" 2>/dev/null || echo "WARNING: js/ folder missing!"
-          ls -la "$APP/www/models/" 2>/dev/null || echo "WARNING: models/ folder missing!"
+          echo "App size before fix: $(du -sh "$APP")"
+
+          # Fix: if www folder is missing from bundle, copy it in manually
+          if [ ! -d "$APP/www" ]; then
+            echo "=== www/ folder MISSING from bundle - applying fix ==="
+            WWW_SRC="${PWD}/ios-3d/kuCar3D/www"
+            echo "Source: $WWW_SRC"
+            ls -la "$WWW_SRC" 2>/dev/null || echo "ERROR: www source not found"
+            if [ -d "$WWW_SRC" ]; then
+              mkdir -p "$APP/www"
+              cp -R "$WWW_SRC/"* "$APP/www/"
+              echo "Copied www to bundle"
+            fi
+          fi
+
+          echo "=== Final bundle check ==="
+          ls -la "$APP/www/" 2>/dev/null || echo "www/ still missing!"
+          ls -la "$APP/www/js/" 2>/dev/null || echo "js/ missing!"
+          ls -la "$APP/www/models/" 2>/dev/null || echo "models/ missing!"
+          ls -la "$APP/www/draco/" 2>/dev/null || echo "draco/ missing!"
+          echo "Final app size: $(du -sh "$APP")"
+
           mkdir -p Payload
           cp -R "$APP" Payload/
           zip -r kuCar3D.ipa Payload/
