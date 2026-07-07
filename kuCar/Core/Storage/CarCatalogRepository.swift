@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Provides access to the built-in car model catalog.
 /// Data is loaded from a bundled JSON file.
