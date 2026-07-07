@@ -1,6 +1,7 @@
 import UIKit
 import AVFoundation
 import Photos
+import SwiftUI
 
 /// Manages camera and photo library permissions.
 @MainActor
