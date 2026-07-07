@@ -203,7 +203,7 @@ enum WheelPosition: String, Codable, CaseIterable, Hashable {
 // MARK: - Wheel Application
 
 struct WheelApplication: Codable, Hashable {
-    let positions: [WheelPosition: WheelStyle]
+    var positions: [WheelPosition: WheelStyle]
     let fitment: WheelFitment
 }
 
