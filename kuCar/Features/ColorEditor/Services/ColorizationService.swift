@@ -16,7 +16,7 @@ final class ColorizationService: ColorizationServiceProtocol, @unchecked Sendabl
     private lazy var ciContext: CIContext = {
         CIContext(options: [
             .workingColorSpace: NSNull(),
-            .outputPremultiplication: true,
+            .outputPremultiplied: true,
             .highQualityDownsample: true
         ])
     }()
