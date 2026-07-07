@@ -1,0 +1,29 @@
+# Auto-detect text files and ensure LF in repo
+*       text=auto
+
+# Shell scripts must use LF
+*.sh    text eol=lf
+
+# Swift source files
+*.swift text eol=lf
+
+# YAML configs
+*.yaml  text eol=lf
+*.yml   text eol=lf
+
+# Property lists
+*.plist text eol=lf
+
+# Metal shaders
+*.metal text eol=lf
+
+# JSON
+*.json  text eol=lf
+
+# Binary files (do not modify)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.mlpackage binary
+*.mlmodelc binary
+*.ipa   binary
