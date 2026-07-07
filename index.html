@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>kuCar — 3D汽车改色&轮毂预览</title>
+<style>
+:root{--bg:#0f0f15;--panel:#161622;--accent:#0ea5e9;--text:#e2e8f0;--sub:#8899aa;--radius:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;user-select:none}
+#app{display:flex;height:100vh}
+#viewer{flex:1;position:relative;cursor:grab;background:radial-gradient(ellipse at center,#1a1a30 0%,#0a0a12 100%)}
+#viewer:active{cursor:grabbing}
+#viewer canvas{display:block}
+.hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:var(--sub);font-size:11px;background:rgba(0,0,0,.5);padding:5px 14px;border-radius:20px;pointer-events:none}
+#panel{width:340px;background:var(--panel);overflow-y:auto;border-left:1px solid rgba(255,255,255,.05);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+#panel::-webkit-scrollbar{width:4px}#panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+.sec{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
+.sec h3{font-size:11px;letter-spacing:1px;color:var(--sub);margin-bottom:8px;display:flex;align-items:center;gap:6px;text-transform:uppercase}
+.car-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.car-item{padding:7px 5px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(255,255,255,.04);transition:.15s;text-align:center;background:rgba(255,255,255,.02)}
+.car-item:hover{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04)}
+.car-item.active{border-color:var(--accent);background:rgba(14,165,233,.06)}
+.car-item .make{font-size:10px;color:var(--sub)}.car-item .model{font-size:12px;font-weight:600}.car-item .info{font-size:9px;color:var(--sub)}
+.swatches{display:flex;flex-wrap:wrap;gap:5px}
+.sw{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.12s}
+.sw:hover{transform:scale(1.1)}.sw.active{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.sw .tip{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap;pointer-events:none}
+.sw:hover .tip{display:block}
+.finish-row{display:flex;gap:4px}
+.fb{flex:1;padding:6px 2px;border-radius:6px;border:1px solid rgba(255,255,255,.06);background:transparent;color:var(--sub);cursor:pointer;font-size:10px;transition:.12s;text-align:center}
+.fb:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.fb.active{border-color:var(--accent);background:rgba(14,165,233,.08);color:var(--accent)}
+.wheel-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.wi{padding:5px 3px;border-radius:7px;cursor:pointer;border:1px solid rgba(255,255,255,.04);text-align:center;transition:.12s;background:rgba(255,255,255,.02)}
+.wi:hover{border-color:rgba(255,255,255,.15)}.wi.active{border-color:var(--accent);background:rgba(14,165,233,.06)}
+.wi .wp{width:32px;height:32px;border-radius:50%;margin:0 auto 3px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.wi .wb{font-size:8px;color:var(--sub)}.wi .wn{font-size:9px;font-weight:500}
+.slider{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.slider label{font-size:10px;color:var(--sub);min-width:28px}.slider input{flex:1;accent-color:var(--accent);height:3px}.slider span{font-size:9px;color:var(--sub);min-width:24px;text-align:right}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:7px;border:none;font-size:11px;cursor:pointer;transition:.12s;font-weight:500}
+.btn-p{background:var(--accent);color:#fff}.btn-o{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.1)}
+#bar{position:fixed;bottom:18px;left:50%;transform:translateX(calc(-50% + 170px));display:flex;gap:5px;z-index:20}
+#bar .btn{backdrop-filter:blur(10px);background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.06)}
+.loader{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:99;flex-direction:column;gap:10px}
+.loader .sp{width:36px;height:36px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){#app{flex-direction:column}#panel{width:100%;max-height:40vh}#viewer{min-height:60vh}#bar{transform:translateX(-50%);bottom:8px}}
+</style>
+</head>
+<body>
+<div class="loader" id="ld"><div class="sp"></div><div style="color:var(--sub);font-size:13px">加载 3D 引擎...</div></div>
+<div id="app">
+<div id="viewer"><div class="hint" id="ht">🖱 拖动旋转 &nbsp;|&nbsp; 滚轮缩放 &nbsp;|&nbsp; 右键平移</div></div>
+<div id="panel">
+<div class="sec"><h3>🚗 车型选择</h3><div class="car-grid" id="cg"></div></div>
+<div class="sec"><h3>🎨 贴膜颜色 <span style="font-size:9px;color:var(--accent)">— 参照3M/Avery品牌</span></h3><div class="swatches" id="sg"></div></div>
+<div class="sec"><h3>✨ 材质质感</h3><div class="finish-row" id="fg"></div><div style="margin-top:8px"><div class="slider"><label>强度</label><input type="range" min="30" max="100" value="85" id="it"><span id="iv">85%</span></div></div></div>
+<div class="sec"><h3>🔧 轮毂选择 <span style="font-size:9px;color:var(--accent)">— 参照BBS/RAYS/OZ品牌</span></h3><div class="wheel-grid" id="wg"></div><div style="margin-top:8px"><div class="slider"><label>尺寸</label><input type="range" min="16" max="22" value="19" id="ws"><span id="wv">19"</span></div></div></div>
+</div></div>
+<div id="bar">
+<button class="btn btn-o" onclick="resetV()">🔄 重置视角</button>
+<button class="btn btn-o" onclick="screen()">📸 截图</button>
+<button class="btn btn-o" onclick="full()">⛶ 全屏</button>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as T from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+// ── Setup ──
+const v=document.getElementById('viewer');
+const R=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.toneMapping=T.ACESFilmicToneMapping;R.toneMappingExposure=1.1;
+R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;v.appendChild(R.domElement);
+
+const S=new T.Scene();S.background=new T.Color('#0f0f15');S.fog=new T.Fog('#0f0f15',8,50);
+const G=new T.Mesh(new T.PlaneGeometry(40,40),new T.MeshStandardMaterial({color:'#181825',roughness:.35,metalness:.1}));
+G.rotation.x=-Math.PI/2;G.position.y=-2;G.receiveShadow=true;S.add(G);
+
+S.add(new T.AmbientLight('#8899bb',2.2));
+const sun=new T.DirectionalLight('#ffffff',5.5);sun.position.set(8,14,4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.near=.3;sun.shadow.camera.far=60;sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=8;sun.shadow.camera.bottom=-5;sun.shadow.bias=-.0002;S.add(sun);
+S.add(new T.DirectionalLight('#6688cc',1.5).translateX(-5).translateY(4).translateZ(-3));
+S.add(new T.DirectionalLight('#ffffff',2.2).set(0,2,-8));
+S.add(new T.DirectionalLight('#334466',.6).set(0,-1,4));
+
+const cam=new T.PerspectiveCamera(42,2,.3,80);cam.position.set(5.5,2.5,7.5);cam.lookAt(0,.3,0);
+const ctrl=new OrbitControls(cam,R.domElement);ctrl.target.set(0,.3,0);ctrl.enableDamping=true;ctrl.dampingFactor=.08;ctrl.minDistance=2.5;ctrl.maxDistance=15;ctrl.maxPolarAngle=Math.PI*.65;ctrl.minPolarAngle=.1;ctrl.update();
+
+const car=new T.Group();S.add(car);let wheels=[],bp={},cur,cc,cf,cw,ci=.85,cws=19;
+
+// ── Materials ──
+const matBodyBase=new T.MeshStandardMaterial({color:'#888',roughness:.25,metalness:.05});
+const matGlass=new T.MeshPhysicalMaterial({color:'#111122',roughness:.05,metalness:.3,opacity:.7,transparent:true,envMapIntensity:.5});
+const matBlack=new T.MeshStandardMaterial({color:'#0a0a0a',roughness:.6,metalness:.2});
+const matChrome=new T.MeshStandardMaterial({color:'#e8e8e8',roughness:.1,metalness:.95});
+const matLight=new T.MeshStandardMaterial({color:'#fff',roughness:.05,metalness:.1,emissive:'#fff',emissiveIntensity:.4});
+const matRed=new T.MeshStandardMaterial({color:'#cc0000',roughness:.1,metalness:.05,emissive:'#330000',emissiveIntensity:.5});
+const matTire=new T.MeshStandardMaterial({color:'#111',roughness:.9,metalness:0});
+const matRim=new T.MeshStandardMaterial({color:'#c0c0c0',roughness:.15,metalness:.92});
+
+// ── Detailed Car Builder ──
+function cylinder(r1,r2,h,segs=24){return new T.CylinderGeometry(r1,r2,h,segs)}
+function sphere(r,ws=16,hs=12){return new T.SphereGeometry(r,ws,hs)}
+function box(w,h,d){return new T.BoxGeometry(w,h,d)}
+function torus(R,r,rs=16,ts=32){return new T.TorusGeometry(R,r,rs,ts)}
+
+function makeBody(spec){
+  const L=spec.L,W=spec.W,H=spec.H,WB=spec.WB,RH=spec.RH,RL=spec.RL;
+  const g=new T.Group();
+
+  // ── Main body: LatheGeometry for realistic car body ──
+  // Profile points define a realistic cross-section
+  const profile=[];
+  const halfW=W/2;
+  const bodyLen=L*1.05, bodyH=H*.75;
+  const fx=WB*.5, rx=-WB*.5;
+
+  // Side profile curve points (x = front-to-back, y = height)
+  const pts=[
+    [fx+spec.hoodR,.15],     // front bottom
+    [fx+spec.hoodR*.7,.32],  // front bumper upper
+    [fx-WB*.1,.52],          // hood rear / windshield base
+    [fx-WB*.22,.52+RH*.75],  // windshield top (or roof front)
+    [fx-WB*.35,.52+RH*.78],  // roof front
+    [rx+WB*.25,.52+RH*.78],  // roof rear
+    [rx+WB*.15,.52+RH*.15],  // rear window base
+    [rx+WB*.05,.48],         // trunk
+    [rx-spec.trunkR*.3,.38], // rear bumper upper
+    [rx-spec.trunkR,.28],    // rear bumper mid
+    [rx-spec.trunkR,.15],    // rear bottom
+  ];
+
+  // Create a path from these points
+  const curve=new T.CatmullRomCurve3(pts.map(([x,y])=>new T.Vector3(x,y,0)));
+  const curvePts=curve.getPoints(120);
+
+  // Build the body as a series of cross-section extrusions
+  // Each cross-section is a rounded rectangle (car body width)
+  const bodyGeo=new T.BufferGeometry();
+  const verts=[],norms=[],idxs=[];
+  const slices=curvePts.length;
+
+  // Width profile: wider in middle, narrower at ends
+  function widthAt(i){const t=i/(slices-1);const wf=1-.08*Math.sin(t*Math.PI);return halfW*wf;}
+
+  // Build vertices for each slice
+  for(let i=0;i<slices;i++){
+    const pt=curvePts[i];
+    const w=widthAt(i);
+    const hSegs=8; // segments around the cross-section
+    for(let j=0;j<hSegs;j++){
+      const angle=(j/hSegs)*Math.PI*2;
+      const rx=w*(.7+.3*Math.abs(Math.cos(angle)));
+      const ry=w*.35;
+      const x=pt.x;
+      const y=pt.y+Math.sin(angle)*ry;
+      const z=Math.cos(angle)*rx;
+      verts.push(x,y,z);
+      // Normal (approximate)
+      const nr=Math.sqrt(z*z+(y-pt.y)*(y-pt.y))||.01;
+      norms.push(0,(y-pt.y)/nr,z/nr);
+    }
+  }
+
+  // Build indices (triangle strips between slices)
+  const hSegs=8;
+  for(let i=0;i<slices-1;i++){
+    for(let j=0;j<hSegs;j++){
+      const a=i*hSegs+j,b=i*hSegs+(j+1)%hSegs,c=(i+1)*hSegs+j,d=(i+1)*hSegs+(j+1)%hSegs;
+      idxs.push(a,c,b,b,c,d);
+    }
+  }
+
+  bodyGeo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+  bodyGeo.setAttribute('normal',new T.Float32BufferAttribute(norms,3));
+  bodyGeo.setIndex(idxs);bodyGeo.computeVertexNormals();
+
+  const bodyMesh=new T.Mesh(bodyGeo,matBodyBase.clone());
+  bodyMesh.castShadow=true;bodyMesh.receiveShadow=true;bodyMesh.name='body';
+  g.add(bodyMesh);
+
+  // ── Windows (glass) ──
+  const winG=new T.Group();
+  // Side windows - use a custom shape
+  const winFront=fx-WB*.17, winRear=rx+WB*.12, winTop=H*(.52+RH*.75), winBot=H*.55;
+  const winW=halfW*.82;
+  [-1,1].forEach(side=>{
+    const winGeo=new T.PlaneGeometry((winRear-winFront)*.95,winTop-winBot*.98,8,4);
+    winGeo.translate((winFront+winRear)/2,winBot+(winTop-winBot)/2,side*winW);
+    winGeo.rotateY(side>0?.15:-.15);
+    const win=new T.Mesh(winGeo,matGlass.clone());win.name='window';winG.add(win);
+  });
+  // Windshield
+  const wsGeo=new T.PlaneGeometry(W*.86,RH*.6,6,4);
+  wsGeo.translate(fx-WB*.21,H*(.52+RH*.35),0);wsGeo.rotateX(-.65);
+  winG.add(new T.Mesh(wsGeo,matGlass.clone()));
+  // Rear window
+  const rwGeo=new T.PlaneGeometry(W*.78,RH*.55,6,4);
+  rwGeo.translate(rx+WB*.14,H*(.52+RH*.35),0);rwGeo.rotateX(.55);
+  winG.add(new T.Mesh(rwGeo,matGlass.clone()));
+  g.add(winG);
+
+  // ── Grille ──
+  const grilleG=new T.Group();
+  const grilleW=W*.22,grilleH=H*.16;
+  const grilleFrame=new T.Mesh(box(.06,grilleH,grilleW),matChrome.clone());
+  grilleFrame.position.set(fx+.06,H*.32,0);grilleG.add(grilleFrame);
+  // Grille bars
+  for(let i=0;i<6;i++){
+    const bar=new T.Mesh(box(.04,grilleH*.85,.02),matChrome.clone());
+    bar.position.set(fx+.06,H*.32,-grilleW*.35+i*grilleW*.14);grilleG.add(bar);
+  }
+  g.add(grilleG);
+
+  // ── Headlights ──
+  [-1,1].forEach(side=>{
+    const hlGeo=sphere(.1,16,8,.5);
+    const hl=new T.Mesh(hlGeo,matLight.clone());
+    hl.position.set(fx+.05,H*.4,side*W*.3);hl.rotation.x=-.3;hl.rotation.z=side*.2;
+    g.add(hl);
+  });
+
+  // ── Taillights ──
+  [-1,1].forEach(side=>{
+    const tl=new T.Mesh(box(.08,.06,.14),matRed.clone());
+    tl.position.set(rx-.04,H*.4,side*W*.32);g.add(tl);
+  });
+
+  // ── Side mirrors ──
+  [-1,1].forEach(side=>{
+    const mirrorG=new T.Group();
+    mirrorG.add(new T.Mesh(box(.06,.08,.04),matBlack.clone()));// arm
+    const mHead=new T.Mesh(sphere(.05,8,6),matChrome.clone());// mirror
+    mHead.position.set(0,.03,side*.06);mirrorG.add(mHead);
+    mirrorG.position.set(fx-WB*.22,H*.58,side*(halfW+.06));
+    g.add(mirrorG);
+  });
+
+  // ── Door lines (subtle grooves) ──
+  [-1,1].forEach(side=>{
+    // Front door line
+    const dlGeo=new T.BoxGeometry(.003,H*.22,W*.02);
+    const dl=new T.Mesh(dlGeo,new T.MeshStandardMaterial({color:'#222',roughness:.8}));
+    dl.position.set(fx-WB*.28,H*.38,side*halfW*.9);g.add(dl);
+    // Rear door line
+    const dl2=new T.Mesh(dlGeo.clone(),new T.MeshStandardMaterial({color:'#222',roughness:.8}));
+    dl2.position.set(rx+WB*.18,H*.38,side*halfW*.9);g.add(dl2);
+  });
+
+  // ── Bumpers ──
+  // Front
+  const fbGeo=box(.1,H*.1,W*.8);
+  const fb=new T.Mesh(fbGeo,matBlack.clone());
+  fb.position.set(fx+.04,H*.2,0);g.add(fb);
+  // Rear
+  const rb=new T.Mesh(fbGeo.clone(),matBlack.clone());
+  rb.position.set(rx-.04,H*.2,0);g.add(rb);
+
+  return g;
+}
+
+function makeWheels(spec,wspec){
+  const g=new T.Group();
+  const R=spec.wheelR*(cws/19),ww=spec.wheelW*.8;
+  const pos=[
+    [spec.WB*.38,spec.H*.2,spec.W*.42],
+    [spec.WB*.38,spec.H*.2,-spec.W*.42],
+    [-spec.WB*.4,spec.H*.2,spec.W*.42],
+    [-spec.WB*.4,spec.H*.2,-spec.W*.42],
+  ];
+
+  pos.forEach(([px,py,pz])=>{
+    const wg=new T.Group();
+    // Tire
+    const tire=new T.Mesh(torus(R,ww*.45,16,32),matTire.clone());
+    tire.rotation.y=Math.PI/2;tire.castShadow=true;wg.add(tire);
+    // Rim
+    const rimGeo=cylinder(R*.58,R*.58,ww*.9,32);
+    const rimMat=new T.MeshStandardMaterial({color:wspec.color||'#c0c0c0',roughness:.12,metalness:.95});
+    const rim=new T.Mesh(rimGeo,rimMat);rim.rotation.x=Math.PI/2;rim.castShadow=true;wg.add(rim);
+    // Spokes
+    const n=wspec.spokes||5;
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2;
+      if(wspec.style==='split'){
+        [-.04,.04].forEach(off=>{
+          const sp=new T.Mesh(box(ww*.25,R*.45,ww*.6),rimMat);
+          sp.position.set(Math.cos(a+off)*R*.28,Math.sin(a+off)*R*.28,0);sp.rotation.z=a+off;wg.add(sp);
+        });
+      }else if(wspec.style==='mesh'){
+        const sp=new T.Mesh(cylinder(ww*.06,ww*.06,R*.5,6),rimMat);
+        sp.position.set(Math.cos(a)*R*.26,Math.sin(a)*R*.26,0);sp.rotation.x=Math.PI/2;wg.add(sp);
+      }else{
+        const sp=new T.Mesh(box(ww*.4,R*.44,ww*.5),rimMat);
+        sp.position.set(Math.cos(a)*R*.26,Math.sin(a)*R*.26,0);sp.rotation.z=a;wg.add(sp);
+      }
+    }
+    // Hub
+    const hub=new T.Mesh(cylinder(R*.1,R*.1,ww,16),new T.MeshStandardMaterial({color:'#2a2a2a',roughness:.3,metalness:.4}));
+    hub.rotation.x=Math.PI/2;wg.add(hub);
+    // Lug nuts
+    for(let i=0;i<5;i++){const la=(i/5)*Math.PI*2;const lug=new T.Mesh(cylinder(R*.025,R*.025,ww*.15,6),matChrome.clone());lug.position.set(Math.cos(la)*R*.16,Math.sin(la)*R*.16,0);lug.rotation.x=Math.PI/2;wg.add(lug);}
+
+    wg.position.set(px,py,pz);wg.rotation.z=Math.PI/2;
+    g.add(wg);wheels.push(wg);
+  });
+  return g;
+}
+
+// ── Car Specs Database (based on real car dimensions, normalized) ──
+const specs={
+  bmw_3:{name:'BMW 3 Series',make:'BMW',model:'3 Series',year:2024,style:'sedan',L:4.72,W:2.08,H:1.19,WB:2.85,RH:.55,RL:2.1,hoodR:.92,trunkR:.78,wheelR:.34,wheelW:.26},
+  bmw_m4:{name:'BMW M4',make:'BMW',model:'M4',year:2024,style:'coupe',L:4.8,W:2.06,H:1.07,WB:2.86,RH:.42,RL:1.75,hoodR:1.0,trunkR:.65,wheelR:.36,wheelW:.28},
+  porsche_911:{name:'Porsche 911',make:'Porsche',model:'911 Turbo',year:2024,style:'sports',L:4.57,W:2.02,H:1.01,WB:2.45,RH:.36,RL:1.6,hoodR:1.0,trunkR:.6,wheelR:.37,wheelW:.29},
+  mercedes_s:{name:'Mercedes S-Class',make:'Mercedes',model:'S-Class',year:2024,style:'sedan',L:5.29,W:2.12,H:1.22,WB:3.22,RH:.56,RL:2.4,hoodR:.95,trunkR:.88,wheelR:.35,wheelW:.26},
+  tesla_ms:{name:'Tesla Model S',make:'Tesla',model:'Model S',year:2024,style:'sedan',L:5.02,W:2.09,H:1.18,WB:2.96,RH:.48,RL:2.3,hoodR:.82,trunkR:.82,wheelR:.35,wheelW:.26},
+  toyota_supra:{name:'Toyota GR Supra',make:'Toyota',model:'GR Supra',year:2024,style:'sports',L:4.38,W:1.98,H:1.02,WB:2.47,RH:.36,RL:1.55,hoodR:1.05,trunkR:.55,wheelR:.36,wheelW:.28},
+  ford_mustang:{name:'Ford Mustang GT',make:'Ford',model:'Mustang GT',year:2024,style:'coupe',L:4.81,W:2.08,H:1.09,WB:2.72,RH:.4,RL:1.8,hoodR:1.1,trunkR:.62,wheelR:.37,wheelW:.28},
+  audi_r8:{name:'Audi R8',make:'Audi',model:'R8',year:2024,style:'sports',L:4.43,W:1.94,H:.95,WB:2.65,RH:.32,RL:1.4,hoodR:1.0,trunkR:.55,wheelR:.38,wheelW:.3},
+  toyota_rav4:{name:'Toyota RAV4',make:'Toyota',model:'RAV4',year:2024,style:'suv',L:4.61,W:2.09,H:1.56,WB:2.69,RH:.72,RL:2.2,hoodR:.65,trunkR:.42,wheelR:.39,wheelW:.29},
+  honda_civic:{name:'Honda Civic Type R',make:'Honda',model:'Civic Type R',year:2024,style:'hatch',L:4.6,W:2.04,H:1.12,WB:2.74,RH:.48,RL:1.95,hoodR:.82,trunkR:.7,wheelR:.34,wheelW:.26},
+};
+
+// ── Color Database (3M / Avery Dennison wrap film colors) ──
+const colors=[
+  {name:'Gloss Black',hex:'#0d0d0d',brand:'3M'},{name:'Matte Black',hex:'#1a1a1a',brand:'3M'},
+  {name:'Satin White Pearl',hex:'#f2f0ec',brand:'Avery'},{name:'Gloss White',hex:'#fafafa',brand:'3M'},
+  {name:'Nardo Grey',hex:'#7a7f85',brand:'Audi OEM'},{name:'Satin Dark Grey',hex:'#4a4d52',brand:'3M'},
+  {name:'Racing Red',hex:'#e6192b',brand:'3M'},{name:'Matte Red',hex:'#c41020',brand:'Avery'},
+  {name:'Yas Marina Blue',hex:'#1e5ec4',brand:'BMW OEM'},{name:'Gloss Light Blue',hex:'#3b9bdb',brand:'3M'},
+  {name:'Deep Blue Metallic',hex:'#0d2b5e',brand:'Avery'},{name:'Miami Blue',hex:'#0099cc',brand:'Porsche OEM'},
+  {name:'British Racing Green',hex:'#0d3320',brand:'Avery'},{name:'Gloss Dark Green',hex:'#1a3d28',brand:'3M'},
+  {name:'Orange Gloss',hex:'#ff6a13',brand:'3M'},{name:'Matte Yellow',hex:'#e8c81a',brand:'Avery'},
+  {name:'Purple Metallic',hex:'#6b21a8',brand:'3M'},{name:'Matte Purple',hex:'#5a1896',brand:'Avery'},
+  {name:'Silver Metallic',hex:'#b8bcc2',brand:'3M'},{name:'Satin Chrome',hex:'#c8ccd0',brand:'Avery'},
+  {name:'Grey Metallic',hex:'#6d7278',brand:'Avery'},{name:'Chalk Grey',hex:'#c5c8cc',brand:'Porsche OEM'},
+  {name:'Matte Military Green',hex:'#4a5530',brand:'3M'},{name:'Gloss Hot Pink',hex:'#ff1493',brand:'Avery'},
+];
+
+// ── Wheel Database (Real wheel brands and models) ──
+const wheels=[
+  {name:'LM',brand:'BBS',spokes:10,style:'mesh',color:'#d8d8d8'},
+  {name:'TE37',brand:'RAYS',spokes:6,style:'standard',color:'#b8860b'},
+  {name:'Ultraleggera',brand:'OZ Racing',spokes:7,style:'standard',color:'#d0d4d8'},
+  {name:'CH-R',brand:'BBS',spokes:5,style:'split',color:'#a0a4a8'},
+  {name:'RS Watanabe',brand:'Watanabe',spokes:8,style:'standard',color:'#c8c8c8'},
+  {name:'Competizione',brand:'OZ Racing',spokes:5,style:'split',color:'#1a1a1a'},
+  {name:'Turbo Twist',brand:'Porsche OEM',spokes:5,style:'standard',color:'#b0b4b8'},
+  {name:'M Sport 666M',brand:'BMW OEM',spokes:5,style:'split',color:'#c0c4c8'},
+  {name:'NT03+M',brand:'Enkei',spokes:6,style:'split',color:'#ddd'},
+  {name:'R33 GT-R OEM',brand:'Nissan OEM',spokes:5,style:'standard',color:'#c0c0c0'},
+  {name:'Superleggera III',brand:'OZ Racing',spokes:8,style:'standard',color:'#e0e0e0'},
+  {name:'Titan 7 TS-5',brand:'Titan7',spokes:5,style:'split',color:'#333'},
+];
+
+// ── State ──
+cur=specs.bmw_3;cc=colors[0];cf='gloss';cw=wheels[0];ci=.85;cws=19;
+
+// ── Rebuild ──
+function rebuild(){
+  while(car.children.length>0)car.remove(car.children[0]);wheels=[];
+  const body=makeBody(cur);bp.body=body;car.add(body);
+  const wg=makeWheels(cur,cw);car.add(wg);
+  applyPaint();
+}
+function applyPaint(){
+  if(!bp.body)return;
+  const f={gloss:{r:.18,m:.04},matte:{r:.65,m:.02},satin:{r:.32,m:.06},metallic:{r:.12,m:.55},chrome:{r:.04,m:.98}}[cf];
+  const c=new T.Color(cc.hex).lerp(new T.Color('#555566'),1-ci);
+  bp.body.children.forEach(ch=>{if(ch.name==='body'){ch.material.color.copy(c);ch.material.roughness=f.r;ch.material.metalness=f.m;}});
+}
+function applyWheels(){
+  const spec=cur,wspec=cw;
+  wheels.forEach(w=>car.remove(w));wheels=[];
+  const wg=makeWheels(spec,wspec);car.add(wg);
+}
+
+// ── UI ──
+function ui(){
+  document.getElementById('cg').innerHTML=Object.entries(specs).map(([id,s])=>`<div class="car-item ${id==='bmw_3'?'active':''}" onclick="sc('${id}')"><div class="make">${s.make}</div><div class="model">${s.model}</div><div class="info">${s.year}·${s.style}</div></div>`).join('');
+  document.getElementById('sg').innerHTML=colors.map((c,i)=>`<div class="sw ${i===0?'active':''}" style="background:${c.hex};position:relative" onclick="sco(${i})"><span class="tip">${c.name}<br><small>${c.brand}</small></span></div>`).join('');
+  document.getElementById('fg').innerHTML=[['gloss','高光'],['matte','哑光'],['satin','缎面'],['metallic','金属'],['chrome','镀铬']].map(([k,v])=>`<div class="fb ${k==='gloss'?'active':''}" onclick="sf('${k}')">${v}</div>`).join('');
+  document.getElementById('wg').innerHTML=wheels.map((w,i)=>`<div class="wi ${i===0?'active':''}" onclick="sw(${i})"><div class="wp" style="background:${w.color};border:2px solid ${w.color}">🔩</div><div class="wb">${w.brand}</div><div class="wn">${w.name}</div></div>`).join('');
+}
+window.sc=function(id){cur=specs[id];document.querySelectorAll('.car-item').forEach(e=>e.classList.remove('active'));document.querySelector(`[onclick="sc('${id}')"]`).classList.add('active');rebuild();};
+window.sco=function(i){cc=colors[i];document.querySelectorAll('.sw').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.sw')[i].classList.add('active');applyPaint();};
+window.sf=function(f){cf=f;document.querySelectorAll('.fb').forEach(e=>e.classList.remove('active'));document.querySelector(`[onclick="sf('${f}')"]`).classList.add('active');applyPaint();};
+window.sw=function(i){cw=wheels[i];document.querySelectorAll('.wi').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.wi')[i].classList.add('active');applyWheels();};
+window.resetV=function(){cam.position.set(5.5,2.5,7.5);ctrl.target.set(0,.3,0);ctrl.update();};
+window.screen=function(){R.render(S,cam);const a=document.createElement('a');a.download=`kuCar_${cur.make}_${cur.model}_${Date.now()}.png`;a.href=R.domElement.toDataURL('image/png');a.click();};
+window.full=function(){document.fullscreenElement?document.exitFullscreen():document.body.requestFullscreen();};
+document.getElementById('it').oninput=function(){ci=this.value/100;document.getElementById('iv').textContent=this.value+'%';applyPaint();};
+document.getElementById('ws').oninput=function(){cws=parseInt(this.value);document.getElementById('wv').textContent=cws+'"';applyWheels();};
+
+function resize(){const{width,height}=v.getBoundingClientRect();R.setSize(width,height);cam.aspect=width/Math.max(height,1);cam.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+ui();rebuild();resize();
+document.getElementById('ld').style.display='none';
+setTimeout(()=>{document.getElementById('ht').style.opacity='0';},8000);
+(function a(){requestAnimationFrame(a);ctrl.update();R.render(S,cam);})();
+</script>
+</body>
+</html>
