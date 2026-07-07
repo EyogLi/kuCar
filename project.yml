@@ -1,0 +1,96 @@
+name: kuCar
+options:
+  bundleIdPrefix: com.kucar
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.4"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_BITCODE: NO
+    METAL_ENABLE_DEBUG_INFO: NO
+
+packages: {}
+
+targets:
+  kuCar:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: kuCar
+        type: group
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - path: kuCar/Resources
+        type: group
+    settings:
+      base:
+        INFOPLIST_FILE: kuCar/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.kucar.app
+        PRODUCT_NAME: kuCar
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        DEVELOPMENT_TEAM: ""  # Fill in after creating Apple Developer account
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    dependencies:
+      - sdk: CoreML.framework
+        type: required
+        codeSign: false
+      - sdk: Vision.framework
+        type: required
+        codeSign: false
+      - sdk: CoreImage.framework
+        type: required
+        codeSign: false
+      - sdk: Metal.framework
+        type: required
+        codeSign: false
+      - sdk: MetalKit.framework
+        type: required
+        codeSign: false
+      - sdk: SwiftData.framework
+        type: required
+        codeSign: false
+      - sdk: PhotosUI.framework
+        type: required
+        codeSign: false
+      - sdk: AVFoundation.framework
+        type: required
+        codeSign: false
+      - sdk: UniformTypeIdentifiers.framework
+        type: required
+        codeSign: false
+    preBuildScripts:
+      - name: "SwiftLint"
+        script: |
+          if which swiftlint >/dev/null; then
+            swiftlint
+          else
+            echo "warning: SwiftLint not installed"
+          fi
+        basedOnDependencyAnalysis: false
+
+schemes:
+  kuCar:
+    build:
+      targets:
+        kuCar: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
