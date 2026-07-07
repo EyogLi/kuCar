@@ -89,46 +89,72 @@ workflows:
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             2>&1 | tee ../build3d.log
-          echo "=== Build exit code: $? ==="
           echo "=== CHECKING .APP ==="
           find ~/Library/Developer/Xcode/DerivedData -name "kuCar3D.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null || echo "NO .APP FOUND"
 
-      - name: Package IPA
+      - name: Package IPA (with www fix)
         script: |
+          set -x
+          # Locate the built .app
           APP=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar3D.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
           if [ -z "$APP" ]; then
-            echo "FATAL: .app not found, cannot create IPA"
+            echo "FATAL: .app not found"
             tail -50 build3d.log
             exit 1
           fi
-          echo "App: $APP"
-          echo "App size before fix: $(du -sh "$APP")"
+          echo "App path: $APP"
+          echo "App size (before): $(du -sh "$APP" | cut -f1)"
 
-          # Fix: if www folder is missing from bundle, copy it in manually
-          if [ ! -d "$APP/www" ]; then
-            echo "=== www/ folder MISSING from bundle - applying fix ==="
-            WWW_SRC="${PWD}/ios-3d/kuCar3D/www"
-            echo "Source: $WWW_SRC"
-            ls -la "$WWW_SRC" 2>/dev/null || echo "ERROR: www source not found"
-            if [ -d "$WWW_SRC" ]; then
-              mkdir -p "$APP/www"
-              cp -R "$WWW_SRC/"* "$APP/www/"
-              echo "Copied www to bundle"
+          # Find www source - try multiple possible locations
+          WWW_SRC=""
+          for candidate in \
+            "${CM_BUILD_DIR}/ios-3d/kuCar3D/www" \
+            "${FCI_BUILD_DIR}/ios-3d/kuCar3D/www" \
+            "$(dirname "$APP")/../../SourceCache/ios-3d/kuCar3D/www" \
+            "/Users/builder/clone/ios-3d/kuCar3D/www" \
+            "/Users/builder/build/ios-3d/kuCar3D/www"; do
+            if [ -d "$candidate" ]; then
+              WWW_SRC="$candidate"
+              echo "Found www at: $WWW_SRC"
+              break
+            fi
+          done
+
+          # If still not found, search broadly
+          if [ -z "$WWW_SRC" ]; then
+            echo "Searching for www folder..."
+            WWW_SRC=$(find / -path "*/ios-3d/kuCar3D/www/index.html" -type f 2>/dev/null | head -1 | xargs dirname 2>/dev/null)
+            if [ -n "$WWW_SRC" ] && [ -d "$WWW_SRC" ]; then
+              echo "Found www via search: $WWW_SRC"
             fi
           fi
 
-          echo "=== Final bundle check ==="
-          ls -la "$APP/www/" 2>/dev/null || echo "www/ still missing!"
-          ls -la "$APP/www/js/" 2>/dev/null || echo "js/ missing!"
-          ls -la "$APP/www/models/" 2>/dev/null || echo "models/ missing!"
-          ls -la "$APP/www/draco/" 2>/dev/null || echo "draco/ missing!"
-          echo "Final app size: $(du -sh "$APP")"
+          # Copy www into app bundle
+          if [ -n "$WWW_SRC" ] && [ -d "$WWW_SRC" ]; then
+            if [ ! -d "$APP/www" ] || [ ! -f "$APP/www/index.html" ]; then
+              echo "=== Copying www to bundle ==="
+              mkdir -p "$APP/www"
+              cp -R "$WWW_SRC/"* "$APP/www/"
+              echo "Copy done. www contents:"
+              ls -la "$APP/www/"
+              ls -la "$APP/www/js/" 2>/dev/null || echo "(no js/)"
+              ls -la "$APP/www/models/" 2>/dev/null || echo "(no models/)"
+            else
+              echo "www already in bundle"
+            fi
+          else
+            echo "WARNING: Could not find www source directory"
+          fi
 
+          echo "App size (after): $(du -sh "$APP" | cut -f1)"
+
+          # Create IPA
+          cd "$CM_BUILD_DIR" 2>/dev/null || cd "${FCI_BUILD_DIR}" 2>/dev/null || cd ~
           mkdir -p Payload
           cp -R "$APP" Payload/
           zip -r kuCar3D.ipa Payload/
           ls -lh kuCar3D.ipa
 
     artifacts:
-      - ios-3d/kuCar3D.ipa
+      - kuCar3D.ipa
       - build3d.log
