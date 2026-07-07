@@ -22,7 +22,10 @@ final class PhotoLibraryManager: ObservableObject {
     /// Process the picker result and extract image data.
     func processPickerResult(_ result: PHPickerResult) async {
         do {
-            let data = try await result.itemProvider.loadData(for: .image)
+            let (data, _) = try await result.itemProvider.loadItem(
+                forTypeIdentifier: UTType.image.identifier,
+                options: nil
+            ) as! (Data, NSError?)
             self.selectedImageData = data
             self.selectedImage = UIImage(data: data)
         } catch {
