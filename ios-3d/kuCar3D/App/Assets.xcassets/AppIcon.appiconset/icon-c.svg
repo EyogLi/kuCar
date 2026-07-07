@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050510"/>
+      <stop offset="100%" stop-color="#0a0a20"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg3)"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.04" stroke="#0ea5e9" stroke-width="1">
+    <line x1="0" y1="256" x2="1024" y2="256"/>
+    <line x1="0" y1="512" x2="1024" y2="512"/>
+    <line x1="0" y1="768" x2="1024" y2="768"/>
+    <line x1="256" y1="0" x2="256" y2="1024"/>
+    <line x1="512" y1="0" x2="512" y2="1024"/>
+    <line x1="768" y1="0" x2="768" y2="1024"/>
+  </g>
+
+  <!-- Glow circle -->
+  <circle cx="512" cy="400" r="280" fill="#0ea5e9" opacity="0.03"/>
+
+  <!-- Wireframe car -->
+  <g transform="translate(512,420)">
+    <!-- Body outline -->
+    <path d="M-400,100 L-400,20 Q-360,-80 -260,-110 Q-140,-150 0,-170 Q160,-150 280,-110 Q360,-70 380,-10 L380,100 Z" fill="none" stroke="#0ea5e9" stroke-width="14" opacity="0.8"/>
+    <!-- Inner body fill -->
+    <path d="M-370,80 L-370,30 Q-340,-60 -250,-85 Q-140,-120 0,-135 Q160,-120 270,-85 Q340,-55 355,0 L355,80 Z" fill="none" stroke="#0ea5e9" stroke-width="5" opacity="0.3"/>
+    <!-- Wheels -->
+    <circle cx="-200" cy="120" r="55" fill="none" stroke="#0ea5e9" stroke-width="12"/>
+    <circle cx="-200" cy="120" r="18" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="220" cy="120" r="55" fill="none" stroke="#0ea5e9" stroke-width="12"/>
+    <circle cx="220" cy="120" r="18" fill="#0ea5e9" opacity="0.6"/>
+    <!-- Accent dots -->
+    <circle cx="-340" cy="10" r="10" fill="#0ea5e9"/>
+    <circle cx="340" cy="10" r="10" fill="#0ea5e9"/>
+    <circle cx="0" cy="-160" r="8" fill="#0ea5e9"/>
+  </g>
+
+  <!-- Brand text -->
+  <text x="512" y="800" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,-apple-system,sans-serif" font-size="140" font-weight="800" letter-spacing="10">kuCar</text>
+  <text x="512" y="870" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,-apple-system,sans-serif" font-size="38" font-weight="300" letter-spacing="16" opacity="0.45">CONFIGURATOR</text>
+</svg>
