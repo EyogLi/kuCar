@@ -20,7 +20,7 @@ workflows:
 
       - name: Build for iOS device
         script: |
-          set -eo pipefail
+          set -e
           xcodebuild build \
             -project kuCar.xcodeproj \
             -scheme kuCar \
@@ -28,12 +28,13 @@ workflows:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee build.log
-          echo "=== BUILD RESULT: $? ==="
-          echo "=== Checking for .app ==="
-          find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null || echo "NO .APP FOUND"
-          echo "=== Build log last 30 lines ==="
-          tail -30 build.log
+            > build.log 2>&1 || true
+          echo "=== ERRORS ==="
+          grep -E "^/.*error:|error:" build.log | head -20
+          echo "=== CHECKING .APP ==="
+          find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null || echo "NO .APP"
+          echo "=== LOG TAIL ==="
+          tail -20 build.log
 
       - name: Package IPA
         script: |
