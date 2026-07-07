@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage
+import Observation
 
 @MainActor
 @Observable
@@ -150,7 +151,7 @@ final class ColorEditorViewModel {
     private func buildCombinedMask(for panels: Set<CarPanel>) -> CIImage {
         let masks = panels.compactMap { segmentedCar.segmentationResult.panelMask(for: $0) }
         guard !masks.isEmpty else {
-            return segmentedCar.segmentationResult.fullBodyMask ?? CIImage.empty()
+            return segmentedCar.segmentationResult.fullBodyMask ?? CIImage()
         }
 
         // Combine masks using maximum compositing (logical OR)
@@ -173,8 +174,3 @@ final class ColorEditorViewModel {
     }
 }
 
-extension CIImage {
-    static func empty() -> CIImage {
-        CIImage.empty()
-    }
-}
