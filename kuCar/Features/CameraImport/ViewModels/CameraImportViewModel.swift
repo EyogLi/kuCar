@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import Observation
+import UniformTypeIdentifiers
 
 @MainActor
 @Observable
@@ -55,13 +56,15 @@ final class CameraImportViewModel {
         permissionsManager.openAppSettings()
     }
 
-    func handlePickedPhoto(_ result: PHPickerResult) async {
-        await photoLibraryManager.processPickerResult(result)
-        if let data = photoLibraryManager.selectedImageData, let image = photoLibraryManager.selectedImage {
-            selectedImageData = data
-            selectedImage = image
-        } else {
-            error = photoLibraryManager.error
+    func handlePickedPhoto(_ item: PhotosPickerItem) async {
+        do {
+            if let data = try await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                selectedImageData = data
+                selectedImage = image
+            }
+        } catch {
+            self.error = "无法加载所选图片: \(error.localizedDescription)"
         }
     }
 
