@@ -4,6 +4,12 @@ using namespace metal;
 
 // MARK: - Matte Noise Generator
 
+// Hash helper for noise generation
+inline float noiseHash(float2 p, float t) {
+    float h = dot(p, float2(127.1, 311.7));
+    return fract(sin(h) * 43758.5453 + t * 0.1);
+}
+
 /// Generates procedural noise for matte paint texture.
 extern "C" float4 matteNoise(
     float time,
@@ -18,16 +24,10 @@ extern "C" float4 matteNoise(
     float2 f = fract(coord);
     f = f * f * (3.0 - 2.0 * f); // smoothstep
 
-    // Hash function
-    auto hash = [](float2 p) -> float {
-        float h = dot(p, float2(127.1, 311.7));
-        return fract(sin(h) * 43758.5453 + time * 0.1);
-    };
-
-    float a = hash(i);
-    float b = hash(i + float2(1.0, 0.0));
-    float c = hash(i + float2(0.0, 1.0));
-    float d = hash(i + float2(1.0, 1.0));
+    float a = noiseHash(i, time);
+    float b = noiseHash(i + float2(1.0, 0.0), time);
+    float c = noiseHash(i + float2(0.0, 1.0), time);
+    float d = noiseHash(i + float2(1.0, 1.0), time);
 
     float noise = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
     noise = (noise - 0.5) * amount;
