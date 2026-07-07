@@ -1,0 +1,46 @@
+# Xcode
+*.xcuserdata
+*.xcworkspace/xcuserdata
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+DerivedData/
+Build/
+*.mode1v3
+*.mode2v3
+*.pbxuser
+!default.pbxuser
+!default.perspectivev3
+*.moved-aside
+*.xccheckout
+*.xcodeproj/xcuserdata
+*.xcodeproj/project.xcworkspace/xcuserdata
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Playground
+timeline.xctimeline
+playground.xcworkspace
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# CoreML compiled models
+*.mlmodelc
