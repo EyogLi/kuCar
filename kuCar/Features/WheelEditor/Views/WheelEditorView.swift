@@ -77,27 +77,25 @@ struct WheelEditorView: View {
 
     private func wheelPositionIndicators(_ vm: WheelEditorViewModel) -> some View {
         HStack {
-            ForEach(vm.availablePositions, id: \.self) { position in
-                Button {
-                    vm.selectedPosition = position
-                } label: {
-                    Text(position.displayName)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            vm.selectedPosition == position
-                                ? .blue
-                                : .ultraThinMaterial
-                        )
-                        .foregroundColor(
-                            vm.selectedPosition == position ? .white : .primary
-                        )
-                        .clipShape(Capsule())
-                }
+            ForEach(WheelPosition.allCases, id: \.self) { position in
+                positionButton(vm: vm, position: position)
             }
         }
         .padding(8)
+    }
+
+    private func positionButton(vm: WheelEditorViewModel, position: WheelPosition) -> some View {
+        Button {
+            vm.selectedPosition = position
+        } label: {
+            Text(position.displayName)
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(vm.selectedPosition == position ? Color.blue : Color.gray.opacity(0.3))
+                .foregroundColor(vm.selectedPosition == position ? .white : .primary)
+                .clipShape(Capsule())
+        }
     }
 
     // MARK: - Wheel Controls
