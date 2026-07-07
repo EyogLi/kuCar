@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kuCar App Icon Generator</title>
+<style>
+body{font-family:-apple-system,'PingFang SC',sans-serif;background:#0f0f15;color:#fff;text-align:center;padding:30px}
+h1{font-size:20px;margin-bottom:5px}
+.sub{color:#888;font-size:12px;margin-bottom:25px}
+canvas{border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.4);margin:10px}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:15px}
+.btn{padding:10px 20px;border-radius:8px;border:none;font-size:13px;cursor:pointer;font-weight:500}
+.btn-pri{background:#0ea5e9;color:#fff}
+.btn-sec{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.1)}
+.tabs{display:flex;gap:5px;justify-content:center;margin-bottom:20px}
+.tab{padding:8px 16px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#aaa;cursor:pointer;font-size:12px}
+.tab.active{background:rgba(14,165,233,.15);color:#0ea5e9;border-color:#0ea5e9}
+.preview-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+.size-label{color:#888;font-size:10px;margin-top:4px}
+</style>
+</head>
+<body>
+
+<h1>🎨 kuCar App Icon Generator</h1>
+<p class="sub">选择方案 → 生成 → 下载 1024×1024 PNG 图标</p>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-svg="a">✨ 方案A: 流光溢彩</button>
+  <button class="tab" data-svg="c">🔷 方案C: 科技赛博</button>
+</div>
+
+<div class="preview-row">
+  <div>
+    <canvas id="c1024" width="1024" height="1024" style="width:280px;height:280px"></canvas>
+    <div class="size-label">1024×1024 (App Store)</div>
+  </div>
+  <div>
+    <canvas id="c180" width="180" height="180" style="width:140px;height:140px"></canvas>
+    <div class="size-label">180×180 (iPhone)</div>
+  </div>
+  <div>
+    <canvas id="c120" width="120" height="120" style="width:100px;height:100px"></canvas>
+    <div class="size-label">120×120 (Spotlight)</div>
+  </div>
+</div>
+
+<div class="btns">
+  <button class="btn btn-pri" onclick="downloadIcon(1024)">📥 下载 1024×1024 PNG</button>
+  <button class="btn btn-sec" onclick="downloadIcon(180)">📥 下载 180×180 PNG</button>
+  <button class="btn btn-sec" onclick="downloadAll()">📦 下载全部尺寸</button>
+</div>
+
+<script>
+const svgs = {
+  a: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="50%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <linearGradient id="carGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <g transform="translate(512,440)">
+    <path d="M-380,80 L-380,10 Q-340,-90 -240,-120 Q-100,-170 60,-170 Q240,-150 350,-100 Q390,-70 400,-10 L400,80 Z" fill="url(#carGrad)" opacity="0.88"/>
+    <path d="M-250,-30 Q-140,-100 -20,-110 Q100,-100 200,-60 Q220,-40 220,-20 Q150,-10 0,-5 Q-180,-10 -250,-30 Z" fill="#1a1a2e" opacity="0.55"/>
+    <path d="M-370,30 Q-200,10 0,5 Q200,10 390,30" fill="none" stroke="#fff" stroke-width="4" opacity="0.18"/>
+    <circle cx="-200" cy="110" r="65" fill="#111" stroke="#888" stroke-width="12"/>
+    <circle cx="-200" cy="110" r="25" fill="#888" opacity="0.5"/>
+    <circle cx="220" cy="110" r="65" fill="#111" stroke="#888" stroke-width="12"/>
+    <circle cx="220" cy="110" r="25" fill="#888" opacity="0.5"/>
+  </g>
+  <text x="512" y="800" text-anchor="middle" fill="url(#carGrad)" font-family="system-ui,-apple-system,sans-serif" font-size="140" font-weight="800" letter-spacing="8">kuCar</text>
+  <text x="512" y="870" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,-apple-system,sans-serif" font-size="42" font-weight="400" letter-spacing="12" opacity="0.5">3D STUDIO</text>
+</svg>`)}`,
+  c: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050510"/>
+      <stop offset="100%" stop-color="#0a0a20"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg3)"/>
+  <g opacity="0.04" stroke="#0ea5e9" stroke-width="1">
+    <line x1="0" y1="256" x2="1024" y2="256"/><line x1="0" y1="512" x2="1024" y2="512"/><line x1="0" y1="768" x2="1024" y2="768"/>
+    <line x1="256" y1="0" x2="256" y2="1024"/><line x1="512" y1="0" x2="512" y2="1024"/><line x1="768" y1="0" x2="768" y2="1024"/>
+  </g>
+  <circle cx="512" cy="400" r="280" fill="#0ea5e9" opacity="0.03"/>
+  <g transform="translate(512,420)">
+    <path d="M-400,100 L-400,20 Q-360,-80 -260,-110 Q-140,-150 0,-170 Q160,-150 280,-110 Q360,-70 380,-10 L380,100 Z" fill="none" stroke="#0ea5e9" stroke-width="14" opacity="0.8"/>
+    <path d="M-370,80 L-370,30 Q-340,-60 -250,-85 Q-140,-120 0,-135 Q160,-120 270,-85 Q340,-55 355,0 L355,80 Z" fill="none" stroke="#0ea5e9" stroke-width="5" opacity="0.3"/>
+    <circle cx="-200" cy="120" r="55" fill="none" stroke="#0ea5e9" stroke-width="12"/><circle cx="-200" cy="120" r="18" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="220" cy="120" r="55" fill="none" stroke="#0ea5e9" stroke-width="12"/><circle cx="220" cy="120" r="18" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="-340" cy="10" r="10" fill="#0ea5e9"/><circle cx="340" cy="10" r="10" fill="#0ea5e9"/><circle cx="0" cy="-160" r="8" fill="#0ea5e9"/>
+  </g>
+  <text x="512" y="800" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,-apple-system,sans-serif" font-size="140" font-weight="800" letter-spacing="10">kuCar</text>
+  <text x="512" y="870" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,-apple-system,sans-serif" font-size="38" font-weight="300" letter-spacing="16" opacity="0.45">CONFIGURATOR</text>
+</svg>`)}`
+};
+
+let currentSvg = 'a';
+
+function renderIcon(design, targetCanvas, size) {
+  const img = new Image();
+  img.onload = () => {
+    const ctx = targetCanvas.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(img, 0, 0, size, size);
+  };
+  img.src = svgs[design];
+}
+
+function renderAll() {
+  renderIcon(currentSvg, document.getElementById('c1024'), 1024);
+  renderIcon(currentSvg, document.getElementById('c180'), 180);
+  renderIcon(currentSvg, document.getElementById('c120'), 120);
+}
+
+function downloadIcon(size) {
+  const tmp = document.createElement('canvas');
+  tmp.width = size; tmp.height = size;
+  const img = new Image();
+  img.onload = () => {
+    tmp.getContext('2d').drawImage(img, 0, 0, size, size);
+    const a = document.createElement('a');
+    a.download = `kuCar_icon_${size}x${size}.png`;
+    a.href = tmp.toDataURL('image/png');
+    a.click();
+  };
+  img.src = svgs[currentSvg];
+}
+
+function downloadAll() {
+  [1024, 180, 120, 80, 60, 40].forEach((s, i) => {
+    setTimeout(() => downloadIcon(s), i * 300);
+  });
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentSvg = tab.dataset.svg;
+    renderAll();
+  });
+});
+
+renderAll();
+</script>
+
+<div style="margin-top:25px;color:#666;font-size:11px">
+  <p>→ 下载 PNG 后放置到 <code>ios-3d/kuCar3D/App/Assets.xcassets/AppIcon.appiconset/</code></p>
+  <p>→ 或打开 <a href="app-icon-preview.html" style="color:#0ea5e9">app-icon-preview.html</a> 查看全部 6 个方案</p>
+</div>
+</body>
+</html>
