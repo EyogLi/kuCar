@@ -1,43 +1,23 @@
-# Codemagic CI/CD Configuration for kuCar
-# Codemagic provides 500 free build minutes/month for iOS.
-# Sign up at: https://codemagic.io/
-
 workflows:
-  # ── Sideloading Build (for AltStore / personal use) ────────────────
-  # Generates an IPA you can sideload via AltStore on your iPhone.
-  # No Apple Developer account needed — uses your personal Apple ID.
   kuCar-sideload:
-    name: kuCar for AltStore (Sideload)
+    name: kuCar for AltStore
     instance_type: mac_mini_m2
-    max_build_duration: 30
+    max_build_duration: 45
     environment:
-      xcode: 16.0
+      xcode: latest
     triggering:
       events:
         - push
-        - workflow_dispatch   # Allow manual trigger from Codemagic UI
       branch_patterns:
         - pattern: main
           include: true
-      cancel_previous_builds: false
     scripts:
       - name: Install XcodeGen
-        script: |
-          brew install xcodegen
-
+        script: brew install xcodegen
       - name: Generate Xcode project
+        script: xcodegen generate --spec project.yml
+      - name: Build for iOS device
         script: |
-          xcodegen generate --spec project.yml
-
-      - name: Set build number
-        script: |
-          BUILD_NUMBER=$(($(git rev-list --count HEAD)))
-          echo "Build number: $BUILD_NUMBER"
-
-      - name: Build for iOS device (unsigned)
-        script: |
-          # Use 'build' (not 'archive') — avoids signing requirement
-          # Ad-hoc signing with empty identity allows AltStore to re-sign later
           xcodebuild build \
             -project kuCar.xcodeproj \
             -scheme kuCar \
@@ -50,142 +30,17 @@ workflows:
             CODE_SIGNING_ALLOWED=YES \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
-            CURRENT_PROJECT_VERSION=${BUILD_NUMBER} \
-            CONFIGURATION_BUILD_DIR=build/Device \
-            || true
-
-      - name: Locate and package IPA
+            CONFIGURATION_BUILD_DIR="build/Device"
+      - name: Package IPA
         script: |
-          # Find the built .app
-          APP_PATH=$(find build -name "kuCar.app" -type d 2>/dev/null | head -1)
+          APP_PATH=$(find build -name "kuCar.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
-            # Try DerivedData as fallback
-            APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
+            APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d | head -1)
           fi
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ Could not find kuCar.app"
-            echo "Searching..."
-            find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -type d 2>/dev/null
-            exit 1
-          fi
-          echo "Found app at: $APP_PATH"
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
           cd build && zip -r kuCar.ipa Payload/ && cd ..
-          echo "✅ IPA created: build/kuCar.ipa"
+          echo "IPA created:"
           ls -lh build/kuCar.ipa
-
     artifacts:
       - build/kuCar.ipa
-
-    publishing:
-      email:
-        recipients:
-          - developer@example.com   # ← 改成你自己的邮箱
-        notify:
-          success: true
-          failure: true
-
-
-  # ── Development Build (with signing, for paid Developer accounts) ──
-  kuCar-dev-build:
-    name: kuCar Dev (Signed)
-    instance_type: mac_mini_m2
-    max_build_duration: 45
-    environment:
-      xcode: 16.0
-      ios_signing:
-        distribution_type: development
-        bundle_identifier: com.kucar.app
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: develop
-          include: true
-    scripts:
-      - name: Install XcodeGen
-        script: |
-          brew install xcodegen
-      - name: Generate Xcode project
-        script: |
-          xcodegen generate --spec project.yml
-      - name: Set build number
-        script: |
-          echo "BUILD_NUMBER=$(($(git rev-list --count HEAD)))"
-      - name: Build and Export Development IPA
-        script: |
-          xcodebuild archive \
-            -project kuCar.xcodeproj \
-            -scheme kuCar \
-            -configuration Release \
-            -archivePath build/kuCar.xcarchive \
-            -destination 'generic/platform=iOS' \
-            CURRENT_PROJECT_VERSION=$(($(git rev-list --count HEAD)))
-          xcodebuild -exportArchive \
-            -archivePath build/kuCar.xcarchive \
-            -exportPath build/ \
-            -exportOptionsPlist ci-support/ExportOptions-dev.plist \
-            -allowProvisioningUpdates
-    artifacts:
-      - build/*.ipa
-
-
-  # ── App Store / TestFlight Release ─────────────────────────────────
-  kuCar-release:
-    name: kuCar Release → TestFlight
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-    environment:
-      xcode: 16.0
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kucar.app
-    triggering:
-      events:
-        - push
-        - tag
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
-      cancel_previous_builds: true
-    scripts:
-      - name: Install XcodeGen
-        script: |
-          brew install xcodegen
-      - name: Generate Xcode project
-        script: |
-          xcodegen generate --spec project.yml
-      - name: Set build number
-        script: |
-          echo "BUILD_NUMBER=$(($(git rev-list --count HEAD)))"
-      - name: Archive and Export
-        script: |
-          xcodebuild archive \
-            -project kuCar.xcodeproj \
-            -scheme kuCar \
-            -configuration Release \
-            -archivePath build/kuCar.xcarchive \
-            -destination 'generic/platform=iOS' \
-            CURRENT_PROJECT_VERSION=$(($(git rev-list --count HEAD)))
-          xcodebuild -exportArchive \
-            -archivePath build/kuCar.xcarchive \
-            -exportPath build/ \
-            -exportOptionsPlist ci-support/ExportOptions.plist \
-            -allowProvisioningUpdates
-    artifacts:
-      - build/*.ipa
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_API_KEY
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-        beta_groups:
-          - External Testers
-      email:
-        recipients:
-          - developer@example.com
-        notify:
-          success: true
-          failure: true
