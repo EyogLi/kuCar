@@ -14,11 +14,13 @@ workflows:
     scripts:
       - name: Install XcodeGen
         script: brew install xcodegen
+
       - name: Generate Xcode project
         script: xcodegen generate --spec project.yml
+
       - name: Build for iOS device
         script: |
-          set -e
+          set -eo pipefail
           xcodebuild build \
             -project kuCar.xcodeproj \
             -scheme kuCar \
@@ -26,17 +28,28 @@ workflows:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | grep -E "error:|warning:|note:|BUILD" || true
-          # Check if .app was created
-          find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null
+            2>&1 | tee build.log
+          echo "=== BUILD RESULT: $? ==="
+          echo "=== Checking for .app ==="
+          find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null || echo "NO .APP FOUND"
+          echo "=== Build log last 30 lines ==="
+          tail -30 build.log
+
       - name: Package IPA
         script: |
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
-          APP_PATH="${APP_PATH:-$(find build -name 'kuCar.app' -type d | head -1)}"
-          echo "App: $APP_PATH"
+          set -eo pipefail
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "FATAL: .app not found, cannot create IPA"
+            exit 1
+          fi
+          echo "App: $APP"
+          echo "App size: $(du -sh "$APP")"
           mkdir -p build/Payload
-          cp -R "$APP_PATH" build/Payload/
+          cp -R "$APP" build/Payload/
           cd build && zip -r kuCar.ipa Payload/ && cd ..
           ls -lh build/kuCar.ipa
+
     artifacts:
       - build/kuCar.ipa
+      - build.log
