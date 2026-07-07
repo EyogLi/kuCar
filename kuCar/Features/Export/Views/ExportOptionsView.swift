@@ -61,7 +61,10 @@ struct ExportOptionsView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        Picker("分辨率", selection: $vm.configuration.resolution) {
+                        Picker("分辨率", selection: Binding(
+                            get: { vm.configuration.resolution },
+                            set: { vm.configuration.resolution = $0 }
+                        )) {
                             ForEach(ExportResolution.allCases, id: \.self) { res in
                                 Text(res.rawValue).tag(res)
                             }
@@ -75,7 +78,10 @@ struct ExportOptionsView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        Picker("格式", selection: $vm.configuration.format) {
+                        Picker("格式", selection: Binding(
+                            get: { vm.configuration.format },
+                            set: { vm.configuration.format = $0 }
+                        )) {
                             ForEach(ExportFormat.allCases, id: \.self) { fmt in
                                 Text(fmt.rawValue).tag(fmt)
                             }
@@ -84,11 +90,17 @@ struct ExportOptionsView: View {
                     }
 
                     // Watermark toggle
-                    Toggle("添加 AI 水印", isOn: $vm.configuration.includeWatermark)
+                    Toggle("添加 AI 水印", isOn: Binding(
+                        get: { vm.configuration.includeWatermark },
+                        set: { vm.configuration.includeWatermark = $0 }
+                    ))
                         .font(.subheadline)
 
                     // Metadata toggle
-                    Toggle("包含元数据标签", isOn: $vm.configuration.includeMetadata)
+                    Toggle("包含元数据标签", isOn: Binding(
+                        get: { vm.configuration.includeMetadata },
+                        set: { vm.configuration.includeMetadata = $0 }
+                    ))
                         .font(.subheadline)
                 }
                 .padding()
