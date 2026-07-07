@@ -25,6 +25,7 @@ targets:
         type: group
         excludes:
           - "**/.DS_Store"
+          - "**/*.metal"
     resources:
       - path: kuCar/Resources
         type: group
@@ -69,6 +70,15 @@ targets:
       - sdk: UniformTypeIdentifiers.framework
         type: required
         codeSign: false
+    preBuildScripts:
+      - name: "SwiftLint"
+        script: |
+          if which swiftlint >/dev/null; then
+            swiftlint --config .swiftlint.yml --quiet
+          else
+            echo "SwiftLint not installed — skipping"
+          fi
+        basedOnDependencyAnalysis: false
 
 schemes:
   kuCar:
