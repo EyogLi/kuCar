@@ -54,3 +54,67 @@ workflows:
     artifacts:
       - build/kuCar.ipa
       - build.log
+
+  kuCar3D-sideload:
+    name: kuCar3D for AltStore
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: 16.2
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+
+      - name: Generate Xcode project
+        script: |
+          cd ios-3d
+          xcodegen generate --spec project.yml
+
+      - name: Build for iOS device
+        script: |
+          set -e
+          cd ios-3d
+          xcodebuild build \
+            -project kuCar3D.xcodeproj \
+            -scheme kuCar3D \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            > ../build3d.log 2>&1 || true
+          echo "=== ERRORS ==="
+          grep -E "^/.*error:|error:" ../build3d.log | head -20
+          echo "=== CHECKING .APP ==="
+          find ~/Library/Developer/Xcode/DerivedData -name "kuCar3D.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null || echo "NO .APP"
+          echo "=== LOG TAIL ==="
+          tail -30 ../build3d.log
+
+      - name: Package IPA
+        script: |
+          set -eo pipefail
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "kuCar3D.app" -path "*/Release-iphoneos/*" -type d 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "FATAL: .app not found, cannot create IPA"
+            exit 1
+          fi
+          echo "App: $APP"
+          echo "App size: $(du -sh "$APP")"
+          # Verify www resources are bundled
+          echo "Checking www bundle contents:"
+          ls -la "$APP/www/" 2>/dev/null || echo "WARNING: www/ folder missing from bundle!"
+          ls -la "$APP/www/js/" 2>/dev/null || echo "WARNING: js/ folder missing!"
+          ls -la "$APP/www/models/" 2>/dev/null || echo "WARNING: models/ folder missing!"
+          mkdir -p build3d/Payload
+          cp -R "$APP" build3d/Payload/
+          cd build3d && zip -r ../kuCar3D.ipa Payload/ && cd ..
+          ls -lh kuCar3D.ipa
+
+    artifacts:
+      - kuCar3D.ipa
+      - build3d.log
