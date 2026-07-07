@@ -37,6 +37,29 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+    preBuildScripts:
+      - name: "Copy www resources to app bundle"
+        script: |
+          WWW_SRC="${SRCROOT}/kuCar3D/www"
+          WWW_DST="${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/www"
+          echo "=== kuCar3D: Copying www resources ==="
+          echo "Source: $WWW_SRC"
+          echo "Destination: $WWW_DST"
+          if [ -d "$WWW_SRC" ]; then
+            mkdir -p "$WWW_DST"
+            cp -R "$WWW_SRC/"* "$WWW_DST/"
+            echo "www size: $(du -sh "$WWW_DST")"
+            echo "Files: $(find "$WWW_DST" -type f | wc -l)"
+            ls -la "$WWW_DST/"
+            ls -la "$WWW_DST/js/" 2>/dev/null || echo "  (no js/)"
+            ls -la "$WWW_DST/models/" 2>/dev/null || echo "  (no models/)"
+            ls -la "$WWW_DST/draco/" 2>/dev/null || echo "  (no draco/)"
+          else
+            echo "ERROR: www source not found at $WWW_SRC"
+            echo "SRCROOT contents:"
+            ls -la "${SRCROOT}/"
+            ls -la "${SRCROOT}/kuCar3D/" 2>/dev/null || echo "  no kuCar3D/"
+          fi
 
 schemes:
   kuCar3D:
