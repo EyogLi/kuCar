@@ -1,0 +1,53 @@
+workflows:
+  ios-build:
+    name: Build kuCar3D IPA
+    max_build_duration: 60
+    environment:
+      xcode: "16.2"
+      vars:
+        PROJECT_DIR: kuCar3D
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+      - name: Generate Xcode Project
+        script: |
+          cd ios-3d
+          xcodegen generate
+      - name: Build for iOS Device
+        script: |
+          cd ios-3d
+          xcodebuild build \
+            -project kuCar3D.xcodeproj \
+            -scheme kuCar3D \
+            -configuration Debug \
+            -destination "generic/platform=iOS" \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            VALIDATE_WORKSPACE=NO \
+            DEBUG_INFORMATION_FORMAT=dwarf \
+            ONLY_ACTIVE_ARCH=NO \
+            2>&1 | tee build.log
+      - name: Package IPA
+        script: |
+          # Find the .app bundle
+          APP_PATH=$(find ios-3d/build -name "*.app" -type d | head -1)
+          echo "Found app at: $APP_PATH"
+
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app bundle found. Build directory contents:"
+            find ios-3d/build -type d -maxdepth 5 2>/dev/null || true
+            echo "--- build.log tail ---"
+            tail -100 ios-3d/build.log || true
+            exit 1
+          fi
+
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r kuCar3D.ipa Payload/
+          ls -la kuCar3D.ipa
+    artifacts:
+      - ios-3d/kuCar3D.ipa
+      - ios-3d/build.log
